@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">FirstMqtt</string>
+    <string name="button_connect">CONNECT TO MQTT</string>
+    <string name="button_publish">PUBLISH TO MQTT</string>
+</resources>
