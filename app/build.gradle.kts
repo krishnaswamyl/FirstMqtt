@@ -46,13 +46,10 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     // MQTT dependencies
-//    implementation(libs.org.eclipse.paho.client.mqttv3)
-//    implementation(libs.org.eclipse.paho.android.service)
-//    implementation(libs.androidx.legacy.support.v4) // Required for org.eclipse.paho.android.service
-//    implementation(libs.material.v190)
     implementation(libs.org.eclipse.paho.client.mqttv3)
     implementation(libs.org.eclipse.paho.android.service)
     implementation(libs.androidx.localbroadcastmanager)
     implementation(libs.androidx.legacy.support.v4)
+    implementation("androidx.fragment:fragment-ktx:1.8.3")
 
 }

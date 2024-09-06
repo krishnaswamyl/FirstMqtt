@@ -8,6 +8,7 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.Fragment
 import org.eclipse.paho.client.mqttv3.*
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import javax.net.ssl.SSLSocketFactory
@@ -16,7 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), MqttOperations {
 
     private lateinit var connectButton: Button
     private lateinit var disconnectButton: Button
@@ -25,7 +26,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var statusText: TextView
     private lateinit var subscriptionTextField: TextView
     private lateinit var progressBar: ProgressBar
-    private var mqttClient: MqttClient? = null
+    private lateinit var mqttClient: MqttClient
 
     // ThingSpeak MQTT connection details
     private val serverUri = "ssl://mqtt3.thingspeak.com:8883"
@@ -50,6 +51,10 @@ class MainActivity : AppCompatActivity() {
         connectButton.setOnClickListener { connectToThingSpeak() }
         disconnectButton.setOnClickListener { disconnectFromThingSpeak() }
         publishButton.setOnClickListener { publishMessage() }
+        val adminButton: Button = findViewById(R.id.adminButton)
+        adminButton.setOnClickListener {
+            openAdminFragment()
+        }
 
         updateConnectionState(false)
     }
@@ -71,9 +76,9 @@ class MainActivity : AppCompatActivity() {
                         setKeepAliveInterval(30)
                     }
 
-                    mqttClient?.setCallback(object : MqttCallback {
+                    mqttClient.setCallback(object : MqttCallback {
                         override fun connectionLost(cause: Throwable?) {
-                            showToast("Connection to ThingSpeak lost: ${cause?.message}")
+                            //showToast("Connection to ThingSpeak lost: ${cause?.message}")
                             updateConnectionState(false)
                         }
 
@@ -81,6 +86,9 @@ class MainActivity : AppCompatActivity() {
                             message?.let {
                                 val payload = String(it.payload)
                                 updateTextField(payload)
+                                runOnUiThread {
+                                    updateCurrentFragmentWithMessage(topic, payload)
+                                }
                             }
                             showToast("Message received: ${message?.toString()}")
                         }
@@ -90,8 +98,8 @@ class MainActivity : AppCompatActivity() {
                         }
                     })
 
-                    mqttClient?.connect(options)
-                    mqttClient?.subscribe(subscribeTopic)
+                    mqttClient.connect(options)
+                    mqttClient.subscribe(subscribeTopic)
                     withContext(Dispatchers.Main) {
                         showToast("Connected to ThingSpeak successfully!")
                         updateConnectionState(true)
@@ -108,13 +116,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun updateCurrentFragmentWithMessage(topic: String?, payload: String) {
+        val currentFragment = supportFragmentManager.findFragmentById(R.id.fragmentContainer)
+        when (val fragment:Fragment? = currentFragment) {
+
+            is adminFragment -> fragment.updateReceivedMessage( payload) // If AdminFragment also needs to handle messages
+            // Add other fragment types here if they need to receive MQTT messages
+        }
+    }
+
     private fun disconnectFromThingSpeak() {
         CoroutineScope(Dispatchers.Main).launch {
             progressBar.visibility = View.VISIBLE
             statusText.text = "Disconnecting..."
             withContext(Dispatchers.IO) {
                 try {
-                    mqttClient?.disconnect()
+                    mqttClient.disconnect()
                     withContext(Dispatchers.Main) {
                         showToast("Disconnected from ThingSpeak")
                         updateConnectionState(false)
@@ -136,7 +153,7 @@ class MainActivity : AppCompatActivity() {
             CoroutineScope(Dispatchers.IO).launch {
                 try {
                     val mqttMessage = MqttMessage(message.toByteArray())
-                    mqttClient?.publish(publishTopic, mqttMessage)
+                    mqttClient.publish(publishTopic, mqttMessage)
                     withContext(Dispatchers.Main) {
                         showToast("Message published")
                         messageInput.text.clear()
@@ -179,6 +196,62 @@ class MainActivity : AppCompatActivity() {
         runOnUiThread {
             subscriptionTextField.text = message
         }
+    }
+
+    override fun publishMessage(topic: String, message: String) {
+        if (!getMqttConnectionStatus()) {
+            println("MQTT Client is not connected")
+            return
+        }
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val mqttMessage = MqttMessage(message.toByteArray())
+                mqttClient.publish(topic, mqttMessage)
+            } catch (e: MqttException) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    override fun subscribeToTopic(topic: String) {
+        if (!getMqttConnectionStatus()) {
+            println("MQTT Client is not connected")
+            return
+        }
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                mqttClient.subscribe(topic)
+            } catch (e: MqttException) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    override fun unsubscribeFromTopic(topic: String) {
+        if (!getMqttConnectionStatus()) {
+            println("MQTT Client is not connected")
+            return
+        }
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                mqttClient.unsubscribe(topic)
+            } catch (e: MqttException) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    override fun getMqttConnectionStatus(): Boolean {
+        // Implementation
+        //return ::mqttClient.isInitialized && mqttClient?.isConnected == true
+        return ::mqttClient.isInitialized && mqttClient.isConnected
+    }
+    private fun openAdminFragment() {
+        val fragmentManager = supportFragmentManager
+        val fragmentTransaction = fragmentManager.beginTransaction()
+        fragmentTransaction.replace(R.id.fragmentContainer, adminFragment())
+        fragmentTransaction.addToBackStack(null)
+        fragmentTransaction.commit()
     }
 
     override fun onDestroy() {
