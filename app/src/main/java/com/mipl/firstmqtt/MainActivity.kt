@@ -120,7 +120,7 @@ class MainActivity : AppCompatActivity(), MqttOperations {
         val currentFragment = supportFragmentManager.findFragmentById(R.id.fragmentContainer)
         when (val fragment:Fragment? = currentFragment) {
 
-            is adminFragment -> fragment.updateReceivedMessage( payload) // If AdminFragment also needs to handle messages
+            is adminFragment -> topic?.let { fragment.updateReceivedMessage(it,payload) } // If AdminFragment also needs to handle messages
             // Add other fragment types here if they need to receive MQTT messages
         }
     }

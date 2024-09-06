@@ -53,7 +53,8 @@ class adminFragment  : Fragment() {
         mqttOperations.subscribeToTopic(topic)
     }
 
-    fun updateReceivedMessage(message: String) {
-        messageTextView.text = message
+    fun updateReceivedMessage(topic:String,message: String) {
+        messageTextView.text = topic+":"+ message
+
     }
 }
