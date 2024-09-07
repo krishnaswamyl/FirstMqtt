@@ -47,7 +47,6 @@ class MainActivity : AppCompatActivity(), MqttOperations {
         statusText = findViewById(R.id.statusText)
         subscriptionTextField=findViewById(R.id.subscriptionTextField)
         progressBar = findViewById(R.id.progressBar)
-
         connectButton.setOnClickListener { connectToThingSpeak() }
         disconnectButton.setOnClickListener { disconnectFromThingSpeak() }
         publishButton.setOnClickListener { publishMessage() }
@@ -74,6 +73,9 @@ class MainActivity : AppCompatActivity(), MqttOperations {
                         isCleanSession = true
                         connectionTimeout = 60
                         setKeepAliveInterval(30)
+                        setWill(publishTopic, "Client Disconnected".toByteArray(), 2, false)
+                        setWill(subscribeTopic, "Client Disconnected".toByteArray(), 2, false)
+
                     }
 
                     mqttClient.setCallback(object : MqttCallback {
@@ -198,6 +200,7 @@ class MainActivity : AppCompatActivity(), MqttOperations {
         }
     }
 
+
     override fun publishMessage(topic: String, message: String) {
         if (!getMqttConnectionStatus()) {
             println("MQTT Client is not connected")
@@ -246,6 +249,7 @@ class MainActivity : AppCompatActivity(), MqttOperations {
         //return ::mqttClient.isInitialized && mqttClient?.isConnected == true
         return ::mqttClient.isInitialized && mqttClient.isConnected
     }
+
     private fun openAdminFragment() {
         val fragmentManager = supportFragmentManager
         val fragmentTransaction = fragmentManager.beginTransaction()
